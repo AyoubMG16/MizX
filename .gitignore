@@ -1,0 +1,44 @@
+# Dependencies and logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# APK / Android build inputs and reverse-engineering artifacts
+*.apk
+*.apk.*
+*.xapk
+*.aab
+*.apks
+*.obb
+*.dex
+*.smali
+*.arsc
+jadx-out/
+apktool-out/
+decompiled/
+decompile/
+extracted-apk/
+ff-apk/
+
+# Application output
+coverage/
+dist/
+build/
+tmp/
+*.log
+
+# Editors / operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

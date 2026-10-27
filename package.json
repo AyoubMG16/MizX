@@ -1,0 +1,33 @@
+{
+  "name": "freefire-mock-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js mock backend for the Free Fire 1.38.2 network analysis: handshake, guest auth, lobby data, rooms, and WebSocket protocol.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test",
+    "demo": "node scripts/demo-client.mjs"
+  },
+  "keywords": [
+    "free-fire",
+    "apk-analysis",
+    "mock-server",
+    "express",
+    "websocket"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  }
+}

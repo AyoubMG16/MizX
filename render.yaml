@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: freefire-mock-backend
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: TRUST_PROXY
+        value: "1"
+      # Set this manually in the Render dashboard after the service URL is
+      # known, e.g. https://ff-mock.onrender.com. It is optional; leaving it
+      # blank makes the server derive URLs from each request.
+      - key: PUBLIC_URL
+        sync: false
