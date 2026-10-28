@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: freefire-mock-backend
+    name: mizx
     runtime: node
     plan: free
     buildCommand: npm ci
@@ -16,8 +16,8 @@ services:
         value: "*"
       - key: TRUST_PROXY
         value: "1"
-      # Set this manually in the Render dashboard after the service URL is
-      # known, e.g. https://ff-mock.onrender.com. It is optional; leaving it
-      # blank makes the server derive URLs from each request.
+      # Canonical public origin returned in API links. Change this if you fork
+      # the project or attach a custom domain. When this is blank, the server
+      # automatically uses Render's RENDER_EXTERNAL_URL.
       - key: PUBLIC_URL
-        sync: false
+        value: https://mizx.onrender.com

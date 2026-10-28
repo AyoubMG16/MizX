@@ -88,6 +88,8 @@ export function createSystemRouter({ config, store }) {
 
     res.json({
       version: config.game.version,
+      base_url: baseUrl,
+      websocket_url: toWebSocketUrl(baseUrl, config.websocket.path),
       default_region: config.game.defaultRegion,
       recommended_region: config.game.defaultRegion,
       recommended_regions: getRecommendedRegions(config.game.defaultRegion, REGIONS.length),

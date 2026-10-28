@@ -30,6 +30,7 @@ repository. Only curated analysis notes are included in
 ## Contents
 
 - [What this is](#what-this-is)
+- [Live deployment](#live-deployment)
 - [Features](#features)
 - [Project layout](#project-layout)
 - [Requirements](#requirements)
@@ -47,6 +48,24 @@ repository. Only curated analysis notes are included in
 - [Legal notice](#legal-notice)
 
 ---
+
+## Live deployment
+
+This repository is deployed on Render at **<https://mizx.onrender.com>**:
+
+| Endpoint | URL |
+| --- | --- |
+| Service descriptor | <https://mizx.onrender.com/> |
+| Health check | <https://mizx.onrender.com/healthz> |
+| Version manifest | <https://mizx.onrender.com/live/ver.php> |
+| Server list | <https://mizx.onrender.com/live/serverList.json> |
+| Protocol description | <https://mizx.onrender.com/api/protocol> |
+| WebSocket | `wss://mizx.onrender.com/ws` |
+
+The service is live and the HTTP/WebSocket flows in this README can be run
+against it by setting `BASE_URL=https://mizx.onrender.com`. It remains a
+**mock backend**: it cannot host the retail Free Fire client, matches, chat, or
+battle services.
 
 ## What this is
 
@@ -115,8 +134,10 @@ It is **not** a drop-in replacement for the game's production services.
 ├── docs/
 │   └── APK_ANALYSIS.md        # Curated static-analysis notes
 ├── scripts/
+│   ├── check-links.mjs        # Read-only server link and WebSocket checker
 │   └── demo-client.mjs        # End-to-end HTTP + WebSocket demo
 ├── test/
+│   ├── config.test.js         # Public URL / Render environment tests
 │   └── integration.test.js    # Node test-runner integration tests
 ├── .env.example
 ├── .gitignore
@@ -146,26 +167,35 @@ npm start
 
 The server listens on `PORT` (default `3000`) and `HOST` (default `0.0.0.0`).
 
-Check it:
+Set the base URL once. It defaults to a local server; export
+`BASE_URL=https://mizx.onrender.com` to target the live Render deployment.
 
 ```bash
-curl -s http://localhost:3000/healthz | jq
-curl -s http://localhost:3000/live/ver.php | jq
-curl -s http://localhost:3000/api/protocol | jq
+BASE_URL="${BASE_URL:-http://localhost:3000}"
+
+curl -s "${BASE_URL}/healthz" | jq
+curl -s "${BASE_URL}/live/ver.php" | jq
+curl -s "${BASE_URL}/api/protocol" | jq
 ```
 
-Open `http://localhost:3000/` for a service descriptor.
+Open `${BASE_URL}/` for a service descriptor.
 
 ## End-to-end API walkthrough
 
-These commands use `jq` and bash. Start the server first.
+These commands use `jq` and bash. Start the server first, then export
+`BASE_URL=https://mizx.onrender.com` to run them against the live deployment.
+The examples assume:
+
+```bash
+BASE_URL="${BASE_URL:-http://localhost:3000}"
+```
 
 ### 1. Discovery and handshake
 
 ```bash
-curl -s http://localhost:3000/live/serverList.json | jq '.serverList[0]'
+curl -s ${BASE_URL}/live/serverList.json | jq '.serverList[0]'
 
-curl -s -X POST http://localhost:3000/api/handshake \
+curl -s -X POST ${BASE_URL}/api/handshake \
   -H 'Content-Type: application/json' \
   -d '{"clientVersion":"1.38.2","platform":"android","deviceId":"demo-device"}' | jq
 ```
@@ -181,7 +211,7 @@ accepted here.
 ```bash
 GUEST_PASSWORD="$(openssl rand -hex 32)"
 
-GUEST_UID="$(curl -s -X POST http://localhost:3000/oauth/guest/register \
+GUEST_UID="$(curl -s -X POST ${BASE_URL}/oauth/guest/register \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   --data-urlencode "password=${GUEST_PASSWORD}" \
   --data-urlencode 'client_type=2' \
@@ -197,7 +227,7 @@ plaintext.
 ### 3. Grant an access token
 
 ```bash
-TOKENS="$(curl -s -X POST http://localhost:3000/oauth/guest/token/grant \
+TOKENS="$(curl -s -X POST ${BASE_URL}/oauth/guest/token/grant \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   --data-urlencode "uid=${GUEST_UID}" \
   --data-urlencode "password=${GUEST_PASSWORD}" \
@@ -217,11 +247,11 @@ The response mirrors the fields read by the SDK:
 ### 4. Log in with the token
 
 ```bash
-HANDSHAKE_ID="$(curl -s -X POST http://localhost:3000/api/handshake \
+HANDSHAKE_ID="$(curl -s -X POST ${BASE_URL}/api/handshake \
   -H 'Content-Type: application/json' \
   -d '{"clientVersion":"1.38.2","platform":"android"}' | jq -r '.data.handshakeId')"
 
-curl -s -X POST http://localhost:3000/api/login \
+curl -s -X POST ${BASE_URL}/api/login \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H 'Content-Type: application/json' \
   -d "{\"handshakeId\":\"${HANDSHAKE_ID}\",\"region\":\"sg\"}" | jq
@@ -240,10 +270,10 @@ curl -s -X POST http://localhost:3000/api/login \
 ### 5. Fetch the profile and lobby
 
 ```bash
-curl -s http://localhost:3000/api/profile \
+curl -s ${BASE_URL}/api/profile \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" | jq
 
-curl -s http://localhost:3000/api/lobby \
+curl -s ${BASE_URL}/api/lobby \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" | jq
 ```
 
@@ -253,7 +283,7 @@ maps, announcements, visible rooms, current room, and capability flags.
 ### 6. Create and join a room
 
 ```bash
-ROOM="$(curl -s -X POST http://localhost:3000/api/lobby/rooms \
+ROOM="$(curl -s -X POST ${BASE_URL}/api/lobby/rooms \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H 'Content-Type: application/json' \
   -d '{"name":"Demo room","mode":"br_squad","map":"bermuda","max_players":4}')"
@@ -265,10 +295,10 @@ ROOM_ID="$(echo "${ROOM}" | jq -r '.data.room.id')"
 Join/leave as the same or another authenticated account:
 
 ```bash
-curl -s -X POST "http://localhost:3000/api/lobby/rooms/${ROOM_ID}/join" \
+curl -s -X POST "${BASE_URL}/api/lobby/rooms/${ROOM_ID}/join" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" | jq
 
-curl -s -X POST "http://localhost:3000/api/lobby/rooms/${ROOM_ID}/leave" \
+curl -s -X POST "${BASE_URL}/api/lobby/rooms/${ROOM_ID}/leave" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" | jq
 ```
 
@@ -283,7 +313,7 @@ Room rules:
 ### 7. Refresh and rotate tokens
 
 ```bash
-NEW_TOKENS="$(curl -s -X POST http://localhost:3000/oauth/token \
+NEW_TOKENS="$(curl -s -X POST ${BASE_URL}/oauth/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   --data-urlencode 'grant_type=refresh_token' \
   --data-urlencode "refresh_token=${REFRESH_TOKEN}" \
@@ -298,7 +328,7 @@ Refresh tokens are single-use and rotate. Reusing an old refresh token returns
 ### 8. Log out
 
 ```bash
-curl -s -X POST http://localhost:3000/api/logout \
+curl -s -X POST ${BASE_URL}/api/logout \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" | jq
 ```
 
@@ -456,16 +486,16 @@ URLs may be logged.
 
 ## WebSocket protocol
 
-Connect to:
+Connect to a local server:
 
 ```text
 ws://localhost:3000/ws
 ```
 
-On Render, use the `wss://` version of your public service URL:
+The live Render deployment uses:
 
 ```text
-wss://your-service.onrender.com/ws
+wss://mizx.onrender.com/ws
 ```
 
 The WebSocket protocol is a **clean JSON envelope inspired by** the
@@ -540,6 +570,8 @@ client that does not answer is terminated after the heartbeat interval.
 
 ```bash
 npx wscat -c ws://localhost:3000/ws
+# or against the live deployment:
+npx wscat -c wss://mizx.onrender.com/ws
 ```
 
 The first message is the welcome event. Send one JSON object per line:
@@ -578,7 +610,7 @@ development except where noted.
 | `NODE_ENV` | `development` | `production` requires `JWT_SECRET` |
 | `PORT` | `3000` | HTTP/WebSocket port; Render injects it |
 | `HOST` | `0.0.0.0` | Bind address |
-| `PUBLIC_URL` | empty | Public origin used in returned URLs |
+| `PUBLIC_URL` | empty | Public origin used in returned URLs; falls back to Render's `RENDER_EXTERNAL_URL` |
 | `JWT_SECRET` | dev-only fallback | HMAC signing key; **required in production** |
 | `CORS_ORIGIN` | `*` | Comma-separated origins or `*` |
 | `TRUST_PROXY` | `1` in production, `0` otherwise | Proxy hop count/boolean |
@@ -609,6 +641,10 @@ openssl rand -hex 48
 The server refuses to start in production without a secret of at least 32
 characters.
 
+On Render, `RENDER_EXTERNAL_URL` is injected automatically and used whenever
+`PUBLIC_URL` is empty. `RENDER_EXTERNAL_HOSTNAME` is a final fallback. The
+checked-in `render.yaml` sets `PUBLIC_URL=https://mizx.onrender.com` explicitly.
+
 ## Deploying to Render
 
 ### Option A: `render.yaml` Blueprint
@@ -617,11 +653,14 @@ characters.
    the analysis notes and mock API publicly visible.
 2. In Render, choose **New → Blueprint** and select the repository.
 3. Render reads `render.yaml`, runs `npm ci`, and starts `npm start`.
-4. After the first deploy, open the service and set `PUBLIC_URL` to the assigned
-   public URL, for example `https://ff-mock.onrender.com`.
-5. Redeploy if necessary. Render health-checks `/healthz`.
+4. `render.yaml` sets `PUBLIC_URL` to `https://mizx.onrender.com`. If you fork
+   the project or use a custom domain, change that value (or override it in the
+   Render dashboard). When it is empty, the server uses Render's
+   `RENDER_EXTERNAL_URL`.
+5. Render health-checks `/healthz`.
 
-`render.yaml` generates `JWT_SECRET` automatically and sets `TRUST_PROXY=1`.
+`render.yaml` generates `JWT_SECRET` automatically, sets `TRUST_PROXY=1`, and
+points `PUBLIC_URL` at the live deployment.
 
 ### Option B: Manual Web Service
 
@@ -640,7 +679,7 @@ Set these environment variables:
 NODE_ENV=production
 JWT_SECRET=<openssl rand -hex 48>
 TRUST_PROXY=1
-PUBLIC_URL=https://your-service.onrender.com
+PUBLIC_URL=https://mizx.onrender.com
 CORS_ORIGIN=*
 ```
 
@@ -651,10 +690,11 @@ port and path (`/ws`) and do not require an extra service.
 ### Render checklist
 
 - [ ] `JWT_SECRET` set (not the development fallback)
-- [ ] `PUBLIC_URL` set to the actual HTTPS origin
+- [ ] `PUBLIC_URL` set to the actual HTTPS origin (`https://mizx.onrender.com`
+      for this deployment)
 - [ ] `TRUST_PROXY=1` so rate limiting and forwarded protocol work
-- [ ] `GET https://your-service.onrender.com/healthz` returns 200
-- [ ] `wss://your-service.onrender.com/ws` accepts a connection
+- [ ] `GET https://mizx.onrender.com/healthz` returns 200
+- [ ] `wss://mizx.onrender.com/ws` accepts a connection
 - [ ] Never commit `.env`, the APK, or decompiled output
 
 ### Render behavior to expect
@@ -688,11 +728,21 @@ npm start
 npm run demo
 
 # or point at a deployed service:
-DEMO_BASE_URL=https://your-service.onrender.com npm run demo
+DEMO_BASE_URL=https://mizx.onrender.com npm run demo
 ```
 
 The demo creates a guest, logs in, fetches the lobby, creates a room, connects
 over WebSocket, pings, logs out, and cleans up the room.
+
+Verify every public link and the WebSocket without creating any state:
+
+```bash
+BASE_URL=https://mizx.onrender.com npm run check:links
+```
+
+The checker confirms that `/`, `/live/serverList.json`, `/live/ver.php`, and
+`/api/protocol` use the configured base URL, then connects to `/ws` and sends a
+ping. It exits non-zero on any mismatch.
 
 ## APK analysis summary
 
@@ -754,7 +804,7 @@ as such.
 | Browser gets `403 CORS_ORIGIN_DENIED` | Add the browser origin to `CORS_ORIGIN` |
 | WebSocket upgrade returns 403 | The browser origin is not allowed |
 | WebSocket closes with `1008` | Per-socket message limit exceeded |
-| Returned URLs point at `localhost` on Render | Set `PUBLIC_URL` to the public HTTPS origin |
+| Returned URLs point at `localhost` on Render | Set `PUBLIC_URL` to the public HTTPS origin, or leave it empty and let the server use Render's `RENDER_EXTERNAL_URL` |
 | Rooms disappear after a restart | Expected; state is in memory |
 | `ALREADY_IN_ROOM` | Leave the current room before creating/joining another |
 | Room list empty | Rooms are region-scoped; create one or check `?region=` |

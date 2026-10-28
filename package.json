@@ -12,6 +12,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
+    "check:links": "node scripts/check-links.mjs",
     "demo": "node scripts/demo-client.mjs"
   },
   "keywords": [

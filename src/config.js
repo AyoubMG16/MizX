@@ -58,6 +58,24 @@ function parseOrigins(value) {
 }
 
 /**
+ * Resolve the canonical public origin. PUBLIC_URL wins. On Render, fall back to
+ * the automatically injected RENDER_EXTERNAL_URL so generated links never point
+ * at localhost even when PUBLIC_URL was not configured in the dashboard.
+ */
+function resolvePublicUrl(env) {
+  const explicit = (env.PUBLIC_URL ?? '').trim();
+  if (explicit) return normalizePublicUrl(explicit);
+
+  const renderUrl = (env.RENDER_EXTERNAL_URL ?? '').trim();
+  if (renderUrl) return normalizePublicUrl(renderUrl);
+
+  const renderHostname = (env.RENDER_EXTERNAL_HOSTNAME ?? '').trim();
+  if (renderHostname) return normalizePublicUrl(`https://${renderHostname}`);
+
+  return '';
+}
+
+/**
  * Load and validate runtime configuration.
  * Exported separately so tests can provide an explicit environment object.
  */
@@ -92,7 +110,7 @@ export function loadConfig(env = process.env) {
     isProduction,
     port,
     host: (env.HOST ?? '0.0.0.0').trim() || '0.0.0.0',
-    publicUrl: normalizePublicUrl(env.PUBLIC_URL),
+    publicUrl: resolvePublicUrl(env),
     corsOrigins: parseOrigins(env.CORS_ORIGIN),
     trustProxy: parseTrustProxy(env.TRUST_PROXY, isProduction ? 1 : false),
     jwt: Object.freeze({

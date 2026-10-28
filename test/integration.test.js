@@ -157,6 +157,11 @@ test('public discovery endpoints work', async () => {
   assert.equal(servers.response.status, 200);
   assert.ok(servers.body.serverList.length > 0);
   assert.equal(servers.body.default_region, 'sg');
+  assert.equal(servers.body.base_url, baseUrl);
+  assert.equal(servers.body.websocket_url, `${baseUrl.replace(/^http/, 'ws')}/ws`);
+  for (const server of servers.body.serverList) {
+    assert.equal(server.websocket_url, servers.body.websocket_url);
+  }
 
   const protocol = await jsonFetch('/api/protocol');
   assert.equal(protocol.response.status, 200);
